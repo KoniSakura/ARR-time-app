@@ -1,1 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ACFT MVT Generator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    label { display: block; margin-top: 12px; }
+    input, textarea, button { width: 100%; padding: 10px; font-size: 16px; }
+    textarea { height: 200px; margin-top: 10px; }
+    button { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+  <h2>ACFT MVT Generator</h2>
+
+  <label>航空機機番（例：N501CN）</label>
+  <input type="text" id="reg" placeholder="例：N501CN" oninput="updatePreview()">
+
+  <label>到着空港（例：RJTT）</label>
+  <input type="text" id="arrAirport" placeholder="例：RJTT" oninput="updatePreview()">
+
+  <label>到着日付</label>
+  <input type="date" id="arrDate" oninput="updatePreview()">
+
+  <label>到着時刻（UTC）</label>
+  <input type="time" id="arrTime" oninput="updatePreview()">
+
+  <label>出発予定日付</label>
+  <input type="date" id="depDate" oninput="updatePreview()">
+
+  <label>出発予定時刻（UTC）</label>
+  <input type="time" id="depTime" oninput="updatePreview()">
+
+  <label>目的地空港（例：PANC）</label>
+  <input type="text" id="destAirport" placeholder="例：PANC" oninput="updatePreview()">
+
+  <button onclick="copyText()">コピーする</button>
+
+  <label>生成されたテキスト（リアルタイム表示）</label>
+  <textarea id="output"></textarea>
+
+  <script src="app.js"></script>
+</body>
+</html>
 
