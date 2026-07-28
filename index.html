@@ -1,47 +1,127 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>ACFT MVT Generator</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    label { display: block; margin-top: 12px; }
-    input, textarea, button { width: 100%; padding: 10px; font-size: 16px; }
-    textarea { height: 200px; margin-top: 10px; }
-    button { margin-top: 20px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACFT MVT Generator</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  label { display: block; margin-top: 12px; }
+  input, textarea, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
+  textarea { height: 200px; margin-top: 10px; }
+  button { margin-top: 20px; }
+</style>
 </head>
 <body>
-
   <h2>ACFT MVT Generator</h2>
 
   <label>航空機機番（例：N501CN）</label>
-  <input type="text" id="reg" placeholder="例：N501CN" oninput="updatePreview()">
+  <input type="text" id="reg" placeholder="例：N501CN">
 
   <label>到着空港（例：RJTT）</label>
-  <input type="text" id="arrAirport" placeholder="例：RJTT" oninput="updatePreview()">
+  <input type="text" id="arrAirport" placeholder="例：RJTT">
 
-  <label>到着日付</label>
-  <input type="date" id="arrDate" oninput="updatePreview()">
+  <label>到着日付（日本時間 / JST）</label>
+  <input type="date" id="arrDate">
 
-  <label>到着時刻（UTC）</label>
-  <input type="time" id="arrTime" oninput="updatePreview()">
+  <label>到着時刻（日本時間 / JST）</label>
+  <input type="time" id="arrTime">
 
-  <label>出発予定日付</label>
-  <input type="date" id="depDate" oninput="updatePreview()">
+  <label>出発予定日付（日本時間 / JST）</label>
+  <input type="date" id="depDate">
 
-  <label>出発予定時刻（UTC）</label>
-  <input type="time" id="depTime" oninput="updatePreview()">
+  <label>出発予定時刻（日本時間 / JST）</label>
+  <input type="time" id="depTime">
 
   <label>目的地空港（例：PANC）</label>
-  <input type="text" id="destAirport" placeholder="例：PANC" oninput="updatePreview()">
+  <input type="text" id="destAirport" placeholder="例：PANC">
 
-  <button onclick="copyText()">コピーする</button>
+  <button id="copyBtn">コピーする</button>
 
   <label>生成されたテキスト（リアルタイム表示）</label>
-  <textarea id="output"></textarea>
+  <textarea id="output" readonly></textarea>
 
-  <script src="app.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+
+  // 日本時間(JST)の日付・時刻文字列を UTC の Date オブジェクトに変換する。
+  // "+09:00" を明示的に付与することで、実行環境のローカルタイムゾーン設定に
+  // 依存せず、常に「入力値=日本時間」として解釈させる。
+  function convertJSTtoUTC(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+    var d = new Date(dateStr + "T" + timeStr + ":00+09:00");
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  // UTCのDateを "28JUL" のようなDDMMM形式にする
+  function formatDateToDDMMM(date) {
+    var day = String(date.getUTCDate()).padStart(2, "0");
+    var month = MONTHS[date.getUTCMonth()];
+    return day + month;
+  }
+
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
+
+  function updatePreview() {
+    var reg = document.getElementById("reg").value.toUpperCase();
+    var arrAirport = document.getElementById("arrAirport").value.toUpperCase();
+    var arrDateRaw = document.getElementById("arrDate").value;
+    var arrTimeRaw = document.getElementById("arrTime").value;
+    var depDateRaw = document.getElementById("depDate").value;
+    var depTimeRaw = document.getElementById("depTime").value;
+    var destAirport = document.getElementById("destAirport").value.toUpperCase();
+
+    var arrUTC = convertJSTtoUTC(arrDateRaw, arrTimeRaw);
+    var depUTC = convertJSTtoUTC(depDateRaw, depTimeRaw);
+
+    var arrDate = arrUTC ? formatDateToDDMMM(arrUTC) : "";
+    var depDate = depUTC ? formatDateToDDMMM(depUTC) : "";
+    var arrTime = arrUTC ? pad2(arrUTC.getUTCHours()) + pad2(arrUTC.getUTCMinutes()) : "";
+    var depTime = depUTC ? pad2(depUTC.getUTCHours()) + pad2(depUTC.getUTCMinutes()) : "";
+
+    var text =
+      "Dear Duty Officer,\n" +
+      "///ACFT MVT///\n" +
+      "Ref " + reg + "\n" +
+      "ATA " + arrAirport + arrDate + " " + arrTime + "UTC\n" +
+      "ETD " + arrAirport + depDate + " " + depTime + "UTC\n" +
+      "For " + destAirport;
+
+    document.getElementById("output").value = text;
+  }
+
+  // input / change の両方を、対象となる全フィールドに登録する。
+  // iOS Safari では date/time ピッカーで input イベントが確実に発火しない
+  // ことがあるため、change も併用してリアルタイム性を担保する。
+  var fieldIds = ["reg", "arrAirport", "arrDate", "arrTime", "depDate", "depTime", "destAirport"];
+  fieldIds.forEach(function (id) {
+    var el = document.getElementById(id);
+    el.addEventListener("input", updatePreview);
+    el.addEventListener("change", updatePreview);
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", function () {
+    var output = document.getElementById("output");
+    output.select();
+    output.setSelectionRange(0, 99999); // モバイル対応
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(output.value).catch(function () {
+        document.execCommand("copy");
+      });
+    } else {
+      document.execCommand("copy");
+    }
+  });
+
+  // 初期表示
+  updatePreview();
+})();
+</script>
 </body>
 </html>
-
