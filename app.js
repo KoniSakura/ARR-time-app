@@ -1,18 +1,22 @@
-function formatDateToDDMMM(dateStr) {
-  if (!dateStr) return "";
-
-  const date = new Date(dateStr);
-  const day = String(date.getUTCDate()).padStart(2, "0");
+function formatDateToDDMMM(dateObj) {
+  const day = String(dateObj.getUTCDate()).padStart(2, "0");
 
   const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
-  const month = months[date.getUTCMonth()];
+  const month = months[dateObj.getUTCMonth()];
 
   return `${day}${month}`;
 }
 
-function formatTimeToHHMM(timeStr) {
-  if (!timeStr) return "";
-  return timeStr.replace(":", "");
+function convertJSTtoUTC(dateStr, timeStr) {
+  if (!dateStr || !timeStr) return null;
+
+  // JSTのDateオブジェクトを作成
+  const jstDate = new Date(`${dateStr}T${timeStr}:00+09:00`);
+
+  // UTCに変換
+  const utcDate = new Date(jstDate.getTime() - 9 * 3600000);
+
+  return utcDate;
 }
 
 function updatePreview() {
@@ -26,13 +30,19 @@ function updatePreview() {
 
   const destAirport = document.getElementById("destAirport").value.toUpperCase();
 
-  // 日付変換（28JUL）
-  const arrDate = formatDateToDDMMM(arrDateRaw);
-  const depDate = formatDateToDDMMM(depDateRaw);
+  // JST → UTC 変換
+  const arrUTC = convertJSTtoUTC(arrDateRaw, arrTimeRaw);
+  const depUTC = convertJSTtoUTC(depDateRaw, depTimeRaw);
 
-  // 時刻変換（1345）
-  const arrTime = formatTimeToHHMM(arrTimeRaw);
-  const depTime = formatTimeToHHMM(depTimeRaw);
+  // 日付（DDMMM）と時刻（HHMM）に整形
+  const arrDate = arrUTC ? formatDateToDDMMM(arrUTC) : "";
+  const depDate = depUTC ? formatDateToDDMMM(depUTC) : "";
+
+  const arrTime = arrUTC ? String(arrUTC.getUTCHours()).padStart(2, "0") +
+                           String(arrUTC.getUTCMinutes()).padStart(2, "0") : "";
+
+  const depTime = depUTC ? String(depUTC.getUTCHours()).padStart(2, "0") +
+                           String(depUTC.getUTCMinutes()).padStart(2, "0") : "";
 
   const text =
 `Dear Duty Officer,
@@ -57,4 +67,3 @@ function copyText() {
     alert("コピーに失敗しました");
   });
 }
-
