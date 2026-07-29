@@ -3,17 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARR ACFT MVT</title>
+<title>ACFT MVT Generator</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; }
+  :root {
+    --bg: #ffffff;
+    --fg: #111111;
+    --muted: #666666;
+    --input-bg: #ffffff;
+    --input-fg: #111111;
+    --input-border: #cccccc;
+    --btn-primary-bg: #2563eb;
+    --btn-primary-fg: #ffffff;
+    --btn-neutral-bg: #6b7280;
+    --btn-neutral-fg: #ffffff;
+    --btn-danger-bg: #dc2626;
+    --btn-danger-fg: #ffffff;
+    --btn-outline-bg: #ffffff;
+    --btn-outline-fg: #111111;
+    --btn-outline-border: #cccccc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121212;
+      --fg: #e8e8e8;
+      --muted: #a0a0a0;
+      --input-bg: #1e1e1e;
+      --input-fg: #e8e8e8;
+      --input-border: #444444;
+      --btn-primary-bg: #3b82f6;
+      --btn-primary-fg: #ffffff;
+      --btn-neutral-bg: #52525b;
+      --btn-neutral-fg: #ffffff;
+      --btn-danger-bg: #ef4444;
+      --btn-danger-fg: #ffffff;
+      --btn-outline-bg: #1e1e1e;
+      --btn-outline-fg: #e8e8e8;
+      --btn-outline-border: #444444;
+    }
+  }
+  [data-theme="dark"] {
+    --bg: #121212;
+    --fg: #e8e8e8;
+    --muted: #a0a0a0;
+    --input-bg: #1e1e1e;
+    --input-fg: #e8e8e8;
+    --input-border: #444444;
+    --btn-primary-bg: #3b82f6;
+    --btn-primary-fg: #ffffff;
+    --btn-neutral-bg: #52525b;
+    --btn-neutral-fg: #ffffff;
+    --btn-danger-bg: #ef4444;
+    --btn-danger-fg: #ffffff;
+    --btn-outline-bg: #1e1e1e;
+    --btn-outline-fg: #e8e8e8;
+    --btn-outline-border: #444444;
+  }
+  body { font-family: sans-serif; padding: 20px; background: var(--bg); color: var(--fg); }
   label { display: block; margin-top: 12px; }
-  input, textarea, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
+  input, textarea, select, button { width: 100%; padding: 10px; font-size: 16px; box-sizing: border-box; }
+  input, textarea, select { background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border); border-radius: 6px; }
   textarea { height: 200px; margin-top: 10px; }
-  button { margin-top: 20px; }
+  button { margin-top: 20px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+  .btnPrimary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
+  .btnNeutral { background: var(--btn-neutral-bg); color: var(--btn-neutral-fg); }
+  .btnDanger { background: var(--btn-danger-bg); color: var(--btn-danger-fg); }
+  .btnRow { display: flex; gap: 10px; }
+  .btnRow button { flex: 1; margin-top: 0; }
+  .themeRow { display: flex; gap: 8px; margin-bottom: 16px; }
+  .themeBtn { flex: 1; margin-top: 0; padding: 8px; font-size: 14px;
+              background: var(--btn-outline-bg); color: var(--btn-outline-fg);
+              border: 1px solid var(--btn-outline-border); }
+  .themeBtn.active { background: var(--btn-primary-bg); color: var(--btn-primary-fg); border-color: var(--btn-primary-bg); }
 </style>
 </head>
 <body>
-  <h2>ARR ACFT MVT v1.0</h2>
+  <div class="themeRow">
+    <button type="button" class="themeBtn" id="theme_auto">自動</button>
+    <button type="button" class="themeBtn" id="theme_light">ライト</button>
+    <button type="button" class="themeBtn" id="theme_dark">ダーク</button>
+  </div>
+  <h2>ACFT MVT Generator</h2>
 
   <label>航空機機番（例：N501CN）</label>
   <input type="text" id="reg" placeholder="例：N501CN">
@@ -36,7 +105,11 @@
   <label>目的地空港（例：PANC）</label>
   <input type="text" id="destAirport" placeholder="例：PANC">
 
-  <button id="copyBtn">コピーする</button>
+  <div class="btnRow">
+    <button id="undoBtn" class="btnNeutral" type="button">元に戻す</button>
+    <button id="resetBtn" class="btnDanger" type="button">リセット</button>
+  </div>
+  <button id="copyBtn" class="btnPrimary">コピーする</button>
 
   <label>生成されたテキスト（リアルタイム表示）</label>
   <textarea id="output" readonly></textarea>
@@ -94,10 +167,64 @@
   }
 
   var fieldIds = ["reg", "arrAirport", "arrDate", "arrTime", "depDate", "depTime", "destAirport"];
+
+  // ---- アンドゥ / リセット機能 ----
+  var history = [];
+  var maxHistory = 50;
+
+  function getState() {
+    var state = {};
+    fieldIds.forEach(function (id) {
+      state[id] = document.getElementById(id).value;
+    });
+    return state;
+  }
+
+  function setState(state) {
+    fieldIds.forEach(function (id) {
+      document.getElementById(id).value = state[id] || "";
+    });
+  }
+
+  var lastState = getState();
+
+  function recordChange() {
+    var newState = getState();
+    var changed = false;
+    for (var k in newState) {
+      if (newState[k] !== lastState[k]) { changed = true; break; }
+    }
+    if (changed) {
+      history.push(lastState);
+      if (history.length > maxHistory) history.shift();
+      lastState = newState;
+    }
+  }
+
   fieldIds.forEach(function (id) {
     var el = document.getElementById(id);
-    el.addEventListener("input", updatePreview);
-    el.addEventListener("change", updatePreview);
+    el.addEventListener("input", function () { recordChange(); updatePreview(); });
+    el.addEventListener("change", function () { recordChange(); updatePreview(); });
+  });
+
+  document.getElementById("undoBtn").addEventListener("click", function () {
+    if (history.length === 0) return;
+    var prev = history.pop();
+    setState(prev);
+    lastState = prev;
+    updatePreview();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    var before = getState();
+    fieldIds.forEach(function (id) {
+      document.getElementById(id).value = "";
+    });
+    var after = getState();
+    history.push(before);
+    if (history.length > maxHistory) history.shift();
+    lastState = after;
+    updatePreview();
   });
 
   document.getElementById("copyBtn").addEventListener("click", function () {
@@ -111,6 +238,39 @@
     } else {
       document.execCommand("copy");
     }
+  });
+
+  // ---- ダークモード切り替え ----
+  var themeButtons = {
+    auto: document.getElementById("theme_auto"),
+    light: document.getElementById("theme_light"),
+    dark: document.getElementById("theme_dark")
+  };
+
+  function applyTheme(pref) {
+    if (pref === "dark") {
+      document.documentElement.setAttribute("data-theme", "dark");
+    } else if (pref === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+    }
+    Object.keys(themeButtons).forEach(function (key) {
+      themeButtons[key].classList.toggle("active", key === pref);
+    });
+  }
+
+  var savedTheme = "auto";
+  try {
+    savedTheme = localStorage.getItem("mvt_theme") || "auto";
+  } catch (e) {}
+  applyTheme(savedTheme);
+
+  Object.keys(themeButtons).forEach(function (key) {
+    themeButtons[key].addEventListener("click", function () {
+      try { localStorage.setItem("mvt_theme", key); } catch (e) {}
+      applyTheme(key);
+    });
   });
 
   updatePreview();
