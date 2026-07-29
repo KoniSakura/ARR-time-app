@@ -13,7 +13,7 @@
 </style>
 </head>
 <body>
-  <h2>ARR ACFT MVT</h2>
+  <h2>ARR ACFT MVT v1.0</h2>
 
   <label>航空機機番（例：N501CN）</label>
   <input type="text" id="reg" placeholder="例：N501CN">
@@ -47,9 +47,9 @@
 
   var MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
-  // 日本時間(JST)の日付・時刻文字列を UTC の Date オブジェクトに変換する。
-  // "+09:00" を明示的に付与することで、実行環境のローカルタイムゾーン設定に
-  // 依存せず、常に「入力値=日本時間」として解釈させる。
+  function pad2(n) { return String(n).padStart(2, "0"); }
+
+  // JSTの日付・時刻文字列をUTCのDateに変換（年は入力されるが出力には使わない）
   function convertJSTtoUTC(dateStr, timeStr) {
     if (!dateStr || !timeStr) return null;
     var d = new Date(dateStr + "T" + timeStr + ":00+09:00");
@@ -57,15 +57,10 @@
     return d;
   }
 
-  // UTCのDateを "28JUL" のようなDDMMM形式にする
   function formatDateToDDMMM(date) {
     var day = String(date.getUTCDate()).padStart(2, "0");
     var month = MONTHS[date.getUTCMonth()];
     return day + month;
-  }
-
-  function pad2(n) {
-    return String(n).padStart(2, "0");
   }
 
   function updatePreview() {
@@ -87,7 +82,9 @@
 
     var text =
       "Dear Duty Officer,\n" +
+      "\n" +
       "///ACFT MVT///\n" +
+      "\n" +
       "Ref " + reg + "\n" +
       "ATA " + arrAirport + arrDate + " " + arrTime + "UTC\n" +
       "ETD " + arrAirport + depDate + " " + depTime + "UTC\n" +
@@ -96,9 +93,6 @@
     document.getElementById("output").value = text;
   }
 
-  // input / change の両方を、対象となる全フィールドに登録する。
-  // iOS Safari では date/time ピッカーで input イベントが確実に発火しない
-  // ことがあるため、change も併用してリアルタイム性を担保する。
   var fieldIds = ["reg", "arrAirport", "arrDate", "arrTime", "depDate", "depTime", "destAirport"];
   fieldIds.forEach(function (id) {
     var el = document.getElementById(id);
@@ -109,7 +103,7 @@
   document.getElementById("copyBtn").addEventListener("click", function () {
     var output = document.getElementById("output");
     output.select();
-    output.setSelectionRange(0, 99999); // モバイル対応
+    output.setSelectionRange(0, 99999);
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(output.value).catch(function () {
         document.execCommand("copy");
@@ -119,7 +113,6 @@
     }
   });
 
-  // 初期表示
   updatePreview();
 })();
 </script>
