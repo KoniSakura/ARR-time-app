@@ -9,7 +9,7 @@
     --bg: #ffffff;
     --fg: #111111;
     --muted: #666666;
-    --input-bg: #ffffff;
+    --input-bg: #f0f0f0;
     --input-fg: #111111;
     --input-border: #cccccc;
     --btn-primary-bg: #2563eb;
@@ -18,7 +18,7 @@
     --btn-neutral-fg: #ffffff;
     --btn-danger-bg: #dc2626;
     --btn-danger-fg: #ffffff;
-    --btn-outline-bg: #ffffff;
+    --btn-outline-bg: #f0f0f0;
     --btn-outline-fg: #111111;
     --btn-outline-border: #cccccc;
   }
@@ -69,7 +69,9 @@
   .btnDanger { background: var(--btn-danger-bg); color: var(--btn-danger-fg); }
   .btnRow { display: flex; gap: 10px; }
   .btnRow button { flex: 1; margin-top: 0; }
-  .themeRow { display: flex; gap: 8px; margin-bottom: 16px; }
+  .themeSection { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--input-border); }
+  .themeSection label { color: var(--muted); font-size: 14px; }
+  .themeRow { display: flex; gap: 8px; margin-top: 8px; }
   .themeBtn { flex: 1; margin-top: 0; padding: 8px; font-size: 14px;
               background: var(--btn-outline-bg); color: var(--btn-outline-fg);
               border: 1px solid var(--btn-outline-border); }
@@ -77,15 +79,13 @@
 </style>
 </head>
 <body>
-  <div class="themeRow">
-    <button type="button" class="themeBtn" id="theme_auto">自動</button>
-    <button type="button" class="themeBtn" id="theme_light">ライト</button>
-    <button type="button" class="themeBtn" id="theme_dark">ダーク</button>
-  </div>
-  <h2>ARR ACFT MVT v1.2</h2>
+  <h2>ARR ACFT MVT v1.3</h2>
 
   <label>航空機機番（例：N501CN）</label>
   <input type="text" id="reg" placeholder="例：N501CN">
+
+  <label>出発空港（例：VHHH）</label>
+  <input type="text" id="fromAirport" placeholder="例：VHHH">
 
   <label>到着空港（例：RJTT）</label>
   <input type="text" id="arrAirport" placeholder="例：RJTT">
@@ -114,6 +114,15 @@
   <label>生成されたテキスト（リアルタイム表示）</label>
   <textarea id="output" readonly></textarea>
 
+  <div class="themeSection">
+    <label>テーマ</label>
+    <div class="themeRow">
+      <button type="button" class="themeBtn" id="theme_auto">自動</button>
+      <button type="button" class="themeBtn" id="theme_light">ライト</button>
+      <button type="button" class="themeBtn" id="theme_dark">ダーク</button>
+    </div>
+  </div>
+
 <script>
 (function () {
   "use strict";
@@ -122,7 +131,6 @@
 
   function pad2(n) { return String(n).padStart(2, "0"); }
 
-  // JSTの日付・時刻文字列をUTCのDateに変換（年は入力されるが出力には使わない）
   function convertJSTtoUTC(dateStr, timeStr) {
     if (!dateStr || !timeStr) return null;
     var d = new Date(dateStr + "T" + timeStr + ":00+09:00");
@@ -138,6 +146,7 @@
 
   function updatePreview() {
     var reg = document.getElementById("reg").value.toUpperCase();
+    var fromAirport = document.getElementById("fromAirport").value.toUpperCase();
     var arrAirport = document.getElementById("arrAirport").value.toUpperCase();
     var arrDateRaw = document.getElementById("arrDate").value;
     var arrTimeRaw = document.getElementById("arrTime").value;
@@ -159,6 +168,7 @@
       "///ACFT MVT///\n" +
       "\n" +
       "Ref " + reg + "\n" +
+      "From " + fromAirport + "\n" +
       "ATA " + arrAirport + arrDate + " " + arrTime + "UTC\n" +
       "ETD " + arrAirport + depDate + " " + depTime + "UTC\n" +
       "For " + destAirport;
@@ -166,9 +176,8 @@
     document.getElementById("output").value = text;
   }
 
-  var fieldIds = ["reg", "arrAirport", "arrDate", "arrTime", "depDate", "depTime", "destAirport"];
+  var fieldIds = ["reg", "fromAirport", "arrAirport", "arrDate", "arrTime", "depDate", "depTime", "destAirport"];
 
-  // ---- アンドゥ / リセット機能 ----
   var history = [];
   var maxHistory = 50;
 
@@ -240,7 +249,6 @@
     }
   });
 
-  // ---- ダークモード切り替え ----
   var themeButtons = {
     auto: document.getElementById("theme_auto"),
     light: document.getElementById("theme_light"),
